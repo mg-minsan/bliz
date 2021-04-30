@@ -3,16 +3,36 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 )
 
 func main() {
-
-	dat, err := ioutil.ReadFile("./data")
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
+	dataPath := fmt.Sprintf("%s/.config/bliz/data", homeDir)
+
+	dat, err := ioutil.ReadFile(dataPath)
+	if err != nil {
+		path := fmt.Sprintf("%s/.config/bliz", homeDir)
+
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			err = os.Mkdir(path, fs.FileMode(0755))
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		dat = []byte("{}")
+		err := ioutil.WriteFile(dataPath, []byte("{}"), 0755)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	hash := make(map[string]string)
 	err = json.Unmarshal(dat, &hash)
 	if err != nil {
@@ -47,7 +67,7 @@ func main() {
 		}
 		value := os.Args[3]
 		hash[key] = value
-		writeToFile(hash)
+		writeToFile(hash, dataPath)
 	case "list":
 		for key := range hash {
 			fmt.Println(key)
@@ -57,13 +77,13 @@ func main() {
 	}
 }
 
-func writeToFile(data map[string]string) {
+func writeToFile(data map[string]string, filePath string) {
 	json, err := json.Marshal(data)
 	if err != nil {
 		fmt.Println("JSON parsed error, file is corrected")
 		os.Exit(1)
 	}
-	ioutil.WriteFile("./data", json, 0644)
+	ioutil.WriteFile(filePath, json, 0644)
 }
 
 func errorKeyRequried() {
