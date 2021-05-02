@@ -2,7 +2,7 @@
 
 A very simple cli app for getting and setting the key value.
 
-Under the hook, it's writing and reading to the files. The files are partitioned by the remainder of the decimal of the first character of the key divided by 10. So, there will be only 10 partitions.
+Under the hook, it's just writing and reading to the json files. The files are partitioned by the remainder of the decimal of the first character of the key divided by 10. So, there will be only 10 partitions.
 
 ```
 NAME:
