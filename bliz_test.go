@@ -1,8 +1,8 @@
 package main
 
 import (
+	"io/fs"
 	"io/ioutil"
-	"log"
 	"os"
 	"testing"
 )
@@ -17,56 +17,38 @@ func TestCreateFileIfNotExit(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	file, err := ioutil.TempFile("/tmp", "bliz_data")
-	defer os.Remove(file.Name())
+	baseDir := "/tmp/bliz"
+	os.Mkdir(baseDir, fs.FileMode(0755))
+	defer os.RemoveAll(baseDir)
+	file := "/" + getPartitionFileName("key")
+	err := ioutil.WriteFile(baseDir+file, []byte(`{"key": "value"}`), 0755)
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
-	ioutil.WriteFile(file.Name(), []byte(`{"key": "value"}`), 0755)
 
 	t.Run("Should return value", func(t *testing.T) {
-		bliz := NewBliz(file.Name())
+		bliz := NewBliz(baseDir)
 		if bliz.Get("key") != "value" {
 			t.Error("cloud not found the value by key")
 		}
 	})
 
 	t.Run("Should return empty string if not found", func(t *testing.T) {
-		bliz := NewBliz(file.Name())
+		bliz := NewBliz(baseDir)
 		if bliz.Get("key1") != "" {
 			t.Error("return value while it should not")
-		}
-	})
-
-}
-
-func TestList(t *testing.T) {
-	file, err := ioutil.TempFile("/tmp", "bliz_data")
-	defer os.Remove(file.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
-	ioutil.WriteFile(file.Name(), []byte(`{"key": "value"}`), 0755)
-	t.Run("Should return array of keys", func(t *testing.T) {
-		bliz := NewBliz(file.Name())
-		list := bliz.List()
-		if list[1] != "key" {
-			t.Error("should return value from ", list)
 		}
 	})
 }
 
 func TestRead(t *testing.T) {
-	file, err := ioutil.TempFile("/tmp", "bliz_data")
-	defer os.Remove(file.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
-	ioutil.WriteFile(file.Name(), []byte(`{}`), 0755)
+	baseDir := "/tmp/bliz"
+	defer os.RemoveAll(baseDir)
+
 	t.Run("Should set the value", func(t *testing.T) {
-		bliz := NewBliz(file.Name())
+		bliz := NewBliz(baseDir)
 		bliz.Set("key", "value")
-		if bliz.data["key"] != "value" {
+		if bliz.Get("key") != "value" {
 			t.Error("value not found by the key name key")
 		}
 	})

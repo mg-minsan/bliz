@@ -14,9 +14,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defaultFilePath := fmt.Sprintf("%s/.config/bliz/data", homeDir)
+	defaultPath := fmt.Sprintf("%s/.config/bliz", homeDir)
 
-	bliz := NewBliz(defaultFilePath)
+	bliz := NewBliz(defaultPath)
 	app := &cli.App{
 		Commands: []*cli.Command{
 			{
@@ -41,7 +41,7 @@ func main() {
 					if c.Args().Get(1) == "" {
 						return &ValueRequiredError{}
 					}
-
+					bliz.Set(c.Args().First(), c.Args().Get(1))
 					fmt.Println("value set")
 					return nil
 				},
@@ -50,7 +50,6 @@ func main() {
 				Name:  "list",
 				Usage: "list all the keys, might be deleted in the future",
 				Action: func(c *cli.Context) error {
-					fmt.Println(bliz.List())
 					return nil
 				},
 			},

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
-	"log"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -18,46 +19,61 @@ type Bliz interface {
 
 type BlizJson struct {
 	dataFilePath string
-	data         map[string]string
+	filepath     string
 }
 
 // Get return value by key
-func (bliz BlizJson) Get(key string) string {
-	return bliz.data[key]
+func (bliz *BlizJson) Get(key string) string {
+	bliz.setPartitionedFilePath(key)
+	if exist := pathExist(bliz.filepath); !exist {
+		return ""
+	}
+	data := parsedFile(bliz.filepath)
+	return data[key]
 }
 
 func (bliz *BlizJson) Set(key string, value string) {
-	log.Print(bliz.data)
-	bliz.data[key] = value
-	if err := writeToFile(bliz.data, bliz.dataFilePath); err != nil {
+	bliz.setPartitionedFilePath(key)
+	if exist := pathExist(bliz.filepath); !exist {
+		createFileRecursively(bliz.filepath)
+	}
+	data := parsedFile(bliz.filepath)
+	data[key] = value
+	if err := writeToFile(data, bliz.filepath); err != nil {
 		fmt.Print(err.Error())
 	}
 }
 
-func (bliz BlizJson) List() []string {
-	keys := make([]string, len(bliz.data))
-	for key := range bliz.data {
-		keys = append(keys, key)
-	}
-	return keys
+func (bliz *BlizJson) setPartitionedFilePath(key string) {
+	bliz.filepath = bliz.dataFilePath + "/" +
+		getPartitionFileName(key)
 }
 
 func NewBliz(filePath string) *BlizJson {
 	if _, err := os.Stat(filePath); os.IsExist(err) {
 		createFileRecursively(filePath)
 	}
-	data, err := ioutil.ReadFile(filePath)
-	hash := make(map[string]string)
-	err = json.Unmarshal(data, &hash)
+	//data, err := ioutil.ReadFile(filePath)
+	/* hash := make(map[string]string)*/
+	//err = json.Unmarshal(data, &hash)
 
-	if err != nil {
-		panic(err)
-	}
+	//if err != nil {
+	//panic(err)
+	/* }*/
 
 	return &BlizJson{
 		dataFilePath: filePath,
-		data:         hash,
 	}
+}
+
+func parsedFile(filePath string) map[string]string {
+	data, err := ioutil.ReadFile(filePath)
+	hash := make(map[string]string)
+	err = json.Unmarshal(data, &hash)
+	if err != nil {
+		panic(err)
+	}
+	return hash
 }
 
 func createFileRecursively(filePath string) {
@@ -69,7 +85,7 @@ func createFileRecursively(filePath string) {
 			continue
 		}
 		if _, err := os.Stat(targetFile); os.IsNotExist(err) {
-			if i == len(fileDir)-1 {
+			if filepath.Ext(targetFile) == ".json" {
 				err = ioutil.WriteFile(targetFile, []byte("{}"), 0755)
 				if err != nil {
 					panic(err)
@@ -85,12 +101,27 @@ func createFileRecursively(filePath string) {
 	}
 }
 
+func pathExist(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 func writeToFile(data map[string]string, filePath string) error {
-	log.Println(data)
 	json, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 	ioutil.WriteFile(filePath, json, 0755)
 	return nil
+}
+
+func getPartition(key rune) int {
+	return int(key) % 10
+}
+
+func getPartitionFileName(key string) string {
+	partitionkey := getPartition(rune(key[0]))
+	return strconv.Itoa(partitionkey) + ".json"
 }
